@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pymupdf
+sentence-transformers
+scikit-learn
+numpy
+python-multipart
+# Optional for /analyze-interview-video. Requires ffmpeg on the machine.
+faster-whisper
