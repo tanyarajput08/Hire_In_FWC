@@ -301,7 +301,7 @@ const analyzeInterviewTranscript = async (transcript, jobDescription) => {
         
         For job: ${jobDescription}
         
-        Provide JSON with: score (0-100), strengths (array), weaknesses (array), recommendation
+        Provide JSON with: overall_score (0-100), communication_score (0-100), technical_relevance_score (0-100), confidence_score (0-100), feedback (text summary and recommendations)
         Return ONLY valid JSON.
       `;
       const result = await modelInstance.generateContent(prompt);
@@ -321,7 +321,7 @@ const analyzeInterviewTranscript = async (transcript, jobDescription) => {
         
         For job: ${jobDescription}
         
-        Provide JSON with: score (0-100), strengths (array), weaknesses (array), recommendation
+        Provide JSON with: overall_score (0-100), communication_score (0-100), technical_relevance_score (0-100), confidence_score (0-100), feedback (text summary and recommendations)
         Return ONLY valid JSON.
       `;
       return await callOpenAI(prompt);
@@ -332,12 +332,13 @@ const analyzeInterviewTranscript = async (transcript, jobDescription) => {
 
   // 3. Fallback
   const localResult = calculateLocalScore(transcript, jobDescription);
-  const feedback = localFallbackSummary(transcript, localResult.score, localResult.matched_skills, localResult.missing_skills);
+  const summaryObj = localFallbackSummary(transcript, localResult.score, localResult.matched_skills, localResult.missing_skills);
   return {
-    score: localResult.score,
-    strengths: localResult.matched_skills,
-    weaknesses: localResult.missing_skills,
-    recommendation: feedback.interview_recommendation
+    overall_score: localResult.score,
+    communication_score: 75,
+    technical_relevance_score: localResult.score,
+    confidence_score: 80,
+    feedback: summaryObj.strengths + " " + summaryObj.weaknesses
   };
 };
 
@@ -346,15 +347,44 @@ const analyzeInterviewVideo = async (videoPath, jobDescription) => {
     throw new Error("Video path and job description are required");
   }
 
-  // 1. Try Gemini
+  // 1. Try Python AI Engine first (for faster-whisper transcription and analysis)
+  try {
+    const response = await fetch("http://127.0.0.1:8000/analyze-interview-video", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        video_path: videoPath,
+        job_description: jobDescription
+      })
+    });
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.overall_score !== undefined) {
+        return {
+          overall_score: data.overall_score,
+          communication_score: data.communication_score,
+          technical_relevance_score: data.technical_relevance_score,
+          confidence_score: data.confidence_score,
+          feedback: data.feedback,
+          transcript: data.transcript
+        };
+      }
+    }
+  } catch (error) {
+    console.warn("[AI Service] Python AI engine check failed, proceeding to Gemini/OpenAI:", error.message);
+  }
+
+  // 2. Try Gemini
   const modelInstance = getGeminiModel();
   if (modelInstance) {
     try {
       const prompt = `
-        Analyze interview video at: ${videoPath}
+        Analyze interview video details. Video path: ${videoPath}.
         For job: ${jobDescription}
         
-        Provide JSON with: score (0-100), communication_skills (0-100), technical_knowledge (0-100), culture_fit (text)
+        Provide JSON with: overall_score (0-100), communication_score (0-100), technical_relevance_score (0-100), confidence_score (0-100), feedback (text summary and recommendations)
         Return ONLY valid JSON.
       `;
       const result = await modelInstance.generateContent(prompt);
@@ -365,14 +395,14 @@ const analyzeInterviewVideo = async (videoPath, jobDescription) => {
     }
   }
 
-  // 2. Try OpenAI
+  // 3. Try OpenAI
   if (process.env.OPENAI_API_KEY) {
     try {
       const prompt = `
         Analyze interview video details. Video path: ${videoPath}.
         For job: ${jobDescription}
         
-        Provide JSON with: score (0-100), communication_skills (0-100), technical_knowledge (0-100), culture_fit (text)
+        Provide JSON with: overall_score (0-100), communication_score (0-100), technical_relevance_score (0-100), confidence_score (0-100), feedback (text summary and recommendations)
         Return ONLY valid JSON.
       `;
       return await callOpenAI(prompt);
@@ -381,12 +411,14 @@ const analyzeInterviewVideo = async (videoPath, jobDescription) => {
     }
   }
 
-  // 3. Fallback
+  // 4. Fallback
   return {
-    score: 60,
-    communication_skills: 70,
-    technical_knowledge: 60,
-    culture_fit: "Basic alignment based on system defaults."
+    overall_score: 65,
+    communication_score: 70,
+    technical_relevance_score: 60,
+    confidence_score: 65,
+    feedback: "Video interview uploaded successfully. (Local fallback analysis: manual review recommended)",
+    transcript: "Video interview uploaded (Transcription not available on server)."
   };
 };
 
