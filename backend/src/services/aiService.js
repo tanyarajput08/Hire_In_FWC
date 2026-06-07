@@ -1,9 +1,27 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
+if (!process.env.GEMINI_API_KEY) {
+  throw new Error("GEMINI_API_KEY environment variable is not set");
+}
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({
   model: process.env.GEMINI_MODEL || "gemini-1.5-flash"
 });
+
+// Helper function to extract JSON from response
+const extractJSON = (text) => {
+  try {
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+    throw new Error("No JSON found in response");
+  } catch (error) {
+    console.error("JSON parsing error:", error);
+    throw new Error(`Failed to parse AI response: ${error.message}`);
+  }
+};
 
 const analyzeResume = async (resumeText, jobDescription) => {
   const prompt = `
@@ -16,43 +34,69 @@ const analyzeResume = async (resumeText, jobDescription) => {
     Job Description:
     ${jobDescription}
     
-    Return JSON only.
+    Return ONLY valid JSON, no other text.
   `;
 
-  const result = await model.generateContent(prompt);
-  const responseText = result.response.text();
-  return JSON.parse(responseText);
+  try {
+    if (!resumeText || !jobDescription) {
+      throw new Error("Resume text and job description are required");
+    }
+
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+    return extractJSON(responseText);
+  } catch (error) {
+    console.error("Error analyzing resume:", error.message);
+    throw new Error(`Resume analysis failed: ${error.message}`);
+  }
 };
 
 const analyzePDF = async (pdfPath, jobDescription) => {
-  // For PDF, extract text first then analyze
   const prompt = `
-    Analyze the resume PDF at path: ${pdfPath}
+    Analyze a resume PDF at path: ${pdfPath}
     Against job description: ${jobDescription}
     
-    Provide JSON with: score, matched_skills, missing_skills, summary
-    Return JSON only.
+    Provide JSON with: score (0-100), matched_skills (array), missing_skills (array), summary
+    Return ONLY valid JSON.
   `;
 
-  const result = await model.generateContent(prompt);
-  const responseText = result.response.text();
-  return JSON.parse(responseText);
+  try {
+    if (!pdfPath || !jobDescription) {
+      throw new Error("PDF path and job description are required");
+    }
+
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+    return extractJSON(responseText);
+  } catch (error) {
+    console.error("Error analyzing PDF:", error.message);
+    throw new Error(`PDF analysis failed: ${error.message}`);
+  }
 };
 
 const analyzeInterviewTranscript = async (transcript, jobDescription) => {
   const prompt = `
-    Analyze interview transcript:
+    Analyze this interview transcript:
     ${transcript}
     
     For job: ${jobDescription}
     
     Provide JSON with: score (0-100), strengths (array), weaknesses (array), recommendation
-    Return JSON only.
+    Return ONLY valid JSON.
   `;
 
-  const result = await model.generateContent(prompt);
-  const responseText = result.response.text();
-  return JSON.parse(responseText);
+  try {
+    if (!transcript || !jobDescription) {
+      throw new Error("Interview transcript and job description are required");
+    }
+
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+    return extractJSON(responseText);
+  } catch (error) {
+    console.error("Error analyzing interview transcript:", error.message);
+    throw new Error(`Interview analysis failed: ${error.message}`);
+  }
 };
 
 const analyzeInterviewVideo = async (videoPath, jobDescription) => {
@@ -60,29 +104,52 @@ const analyzeInterviewVideo = async (videoPath, jobDescription) => {
     Analyze interview video at: ${videoPath}
     For job: ${jobDescription}
     
-    Provide JSON with: score, communication_skills, technical_knowledge, culture_fit
-    Return JSON only.
+    Provide JSON with: score (0-100), communication_skills (0-100), technical_knowledge (0-100), culture_fit (text)
+    Return ONLY valid JSON.
   `;
 
-  const result = await model.generateContent(prompt);
-  const responseText = result.response.text();
-  return JSON.parse(responseText);
+  try {
+    if (!videoPath || !jobDescription) {
+      throw new Error("Video path and job description are required");
+    }
+
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+    return extractJSON(responseText);
+  } catch (error) {
+    console.error("Error analyzing interview video:", error.message);
+    throw new Error(`Video analysis failed: ${error.message}`);
+  }
 };
 
 const askRecruiterAssistant = async (question, candidates) => {
   const prompt = `
-    You are a recruiting assistant. Answer this question:
-    ${question}
+    You are an expert recruiting assistant. Answer this question:
+    "${question}"
     
     Based on these candidates:
     ${JSON.stringify(candidates, null, 2)}
     
-    Provide actionable insights in JSON format.
+    Provide actionable insights in JSON format with: answer, recommendations, next_steps
+    Return ONLY valid JSON.
   `;
 
-  const result = await model.generateContent(prompt);
-  const responseText = result.response.text();
-  return JSON.parse(responseText);
+  try {
+    if (!question) {
+      throw new Error("Question is required");
+    }
+
+    if (!Array.isArray(candidates) || candidates.length === 0) {
+      throw new Error("Candidates array is required and must not be empty");
+    }
+
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+    return extractJSON(responseText);
+  } catch (error) {
+    console.error("Error asking recruiter assistant:", error.message);
+    throw new Error(`Recruiter assistant failed: ${error.message}`);
+  }
 };
 
 const explainScore = async ({
@@ -100,13 +167,22 @@ const explainScore = async ({
     Matched Skills: ${matchedSkills.join(", ")}
     Missing Skills: ${missingSkills.join(", ")}
     
-    Provide JSON with: explanation, key_strengths, areas_to_improve
-    Return JSON only.
+    Provide JSON with: explanation, key_strengths (array), areas_to_improve (array)
+    Return ONLY valid JSON.
   `;
 
-  const result = await model.generateContent(prompt);
-  const responseText = result.response.text();
-  return JSON.parse(responseText);
+  try {
+    if (!resumeText || !jobDescription || score === null || score === undefined) {
+      throw new Error("Resume text, job description, and score are required");
+    }
+
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+    return extractJSON(responseText);
+  } catch (error) {
+    console.error("Error explaining score:", error.message);
+    throw new Error(`Score explanation failed: ${error.message}`);
+  }
 };
 
 const compareCandidates = async ({
@@ -121,13 +197,22 @@ const compareCandidates = async ({
     Candidate B: ${JSON.stringify(candidateB)}
     Job: ${jobDescription}
     
-    Provide JSON with: winner, reasoning, recommendation
-    Return JSON only.
+    Provide JSON with: winner (A or B), reasoning (text), recommendation (text)
+    Return ONLY valid JSON.
   `;
 
-  const result = await model.generateContent(prompt);
-  const responseText = result.response.text();
-  return JSON.parse(responseText);
+  try {
+    if (!candidateA || !candidateB || !jobDescription) {
+      throw new Error("Both candidates and job description are required");
+    }
+
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+    return extractJSON(responseText);
+  } catch (error) {
+    console.error("Error comparing candidates:", error.message);
+    throw new Error(`Candidate comparison failed: ${error.message}`);
+  }
 };
 
 const generateCandidateSummary = async ({
@@ -138,26 +223,47 @@ const generateCandidateSummary = async ({
   missingSkills
 }) => {
   const prompt = `
-    Generate a professional summary for this candidate.
+    Generate a professional summary for this candidate:
     
     Resume: ${resumeText}
     Job: ${jobDescription}
     Score: ${score}
+    Matched Skills: ${matchedSkills.join(", ")}
+    Missing Skills: ${missingSkills.join(", ")}
     
-    Provide JSON with: summary, recommendation, next_steps
-    Return JSON only.
+    Provide JSON with: summary (text), recommendation (text), next_steps (array)
+    Return ONLY valid JSON.
   `;
 
-  const result = await model.generateContent(prompt);
-  const responseText = result.response.text();
-  return JSON.parse(responseText);
+  try {
+    if (!resumeText || !jobDescription || score === null || score === undefined) {
+      throw new Error("Resume text, job description, and score are required");
+    }
+
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+    return extractJSON(responseText);
+  } catch (error) {
+    console.error("Error generating candidate summary:", error.message);
+    throw new Error(`Summary generation failed: ${error.message}`);
+  }
 };
 
 const extractPDFText = async (pdfPath) => {
-  // This would need a PDF extraction library
-  const prompt = `Extract text from PDF at: ${pdfPath}`;
-  const result = await model.generateContent(prompt);
-  return { text: result.response.text() };
+  const prompt = `Extract and return all text content from the PDF file at: ${pdfPath}. Return JSON with: text (the extracted text)`;
+
+  try {
+    if (!pdfPath) {
+      throw new Error("PDF path is required");
+    }
+
+    const result = await model.generateContent(prompt);
+    const responseText = result.response.text();
+    return extractJSON(responseText);
+  } catch (error) {
+    console.error("Error extracting PDF text:", error.message);
+    throw new Error(`PDF text extraction failed: ${error.message}`);
+  }
 };
 
 module.exports = {
