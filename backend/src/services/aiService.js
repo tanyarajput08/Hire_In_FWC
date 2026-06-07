@@ -8,7 +8,7 @@ const getGeminiModel = () => {
     try {
       const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
       return genAI.getGenerativeModel({
-        model: process.env.GEMINI_MODEL || "gemini-2.5-flash"
+        model: process.env.GEMINI_MODEL || "gemini-3.5-flash"
       });
     } catch (e) {
       console.error("Failed to initialize Gemini model:", e);
