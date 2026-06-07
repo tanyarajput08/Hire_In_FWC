@@ -11,6 +11,9 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
+const healthRoutes = require("./routes/healthRoutes");
+app.use("/", healthRoutes);
+
 const authRoutes = require("./routes/authRoutes");
 const protectedRoutes = require("./routes/protectedRoutes");
 const jobRoutes = require("./routes/jobRoutes");
