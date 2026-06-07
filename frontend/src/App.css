@@ -469,7 +469,7 @@ select option {
   gap: 6px;
   padding: 5px;
   border: 1px solid var(--border-glass);
-  background: rgba(255, 255, 255, 0.68);
+  background: rgba(255, 255, 255, 0.04);
   border-radius: 8px;
   margin: 18px 0;
 }
@@ -486,20 +486,12 @@ select option {
   transition: all 0.2s ease;
 }
 
-.role-switcher button {
-  color: #000000;
-}
-
 .role-switcher button.active,
 .segmented button.active,
 .tabs button.active {
   background: var(--accent-grad);
   color: #ffffff;
   box-shadow: 0 8px 20px rgba(37, 99, 235, 0.2);
-}
-
-.role-switcher button.active {
-  color: #000000;
 }
 
 .text-button {
