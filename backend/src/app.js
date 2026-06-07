@@ -3,14 +3,16 @@ const cors = require("cors");
 
 const app = express();
 
-const corsOptions = {
-  origin: process.env.FRONTEND_URL || "http://localhost:5173",
-  credentials: true,
-};
-
-app.use(cors(corsOptions));
+// Global Middlewares
+app.use(cors());
 app.use(express.json());
 
+// Root health route
+app.get("/", (req, res) => {
+  res.json({ status: "Backend is running 🚀" });
+});
+
+// Routes
 const authRoutes = require("./routes/authRoutes");
 const protectedRoutes = require("./routes/protectedRoutes");
 const jobRoutes = require("./routes/jobRoutes");
