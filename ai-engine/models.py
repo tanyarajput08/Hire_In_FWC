@@ -1,5 +1,4 @@
 import os
-from sentence_transformers import SentenceTransformer
 from threading import Lock
 
 # Upgrade embedding model to bge-small-en-v1.5
@@ -13,5 +12,6 @@ def get_model():
     if _model is None:
         with _model_lock:
             if _model is None:
+                from sentence_transformers import SentenceTransformer
                 _model = SentenceTransformer(MODEL_NAME)
     return _model
