@@ -36,23 +36,43 @@ const bulkScreenResumes = async (req, res) => {
     const results = [];
 
     for (const file of req.files) {
-      const analysis = await AI.analyzePDF(
-        path.resolve(file.path),
-        job.description
-      );
+      try {
+        const analysis = await AI.analyzePDF(
+          path.resolve(file.path),
+          job.description
+        );
 
-      const saved = await BulkScreening.saveBulkResult({
-        runId: run.id,
-        jobId: job_id,
-        fileName: file.originalname,
-        filePath: file.path,
-        score: analysis.score,
-        matchedSkills: analysis.matched_skills || [],
-        missingSkills: analysis.missing_skills || [],
-        summary: analysis.summary || null
-      });
+        const saved = await BulkScreening.saveBulkResult({
+          runId: run.id,
+          jobId: job_id,
+          fileName: file.originalname,
+          filePath: file.path,
+          score: analysis.score,
+          matchedSkills: analysis.matched_skills || [],
+          missingSkills: analysis.missing_skills || [],
+          summary: analysis.summary || null
+        });
 
-      results.push(saved);
+        results.push(saved);
+      } catch (fileError) {
+        console.error(`Error processing file ${file.originalname}:`, fileError);
+        const saved = await BulkScreening.saveBulkResult({
+          runId: run.id,
+          jobId: job_id,
+          fileName: file.originalname,
+          filePath: file.path,
+          score: 0,
+          matchedSkills: [],
+          missingSkills: [],
+          summary: {
+            strengths: "Failed to parse or analyze this PDF resume.",
+            weaknesses: fileError.message || "Unknown parsing or AI service error.",
+            recommended_role: "N/A",
+            interview_recommendation: "Manual Review Required"
+          }
+        });
+        results.push(saved);
+      }
     }
 
     res.status(201).json({

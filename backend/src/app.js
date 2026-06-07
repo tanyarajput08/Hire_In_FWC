@@ -92,4 +92,22 @@ app.use("/", interviewRoutes);
 app.use("/api", assistantRoutes);
 app.use("/", assistantRoutes);
 
+// Global Error Handler Middleware
+app.use((err, req, res, next) => {
+  console.error("Unhandled Error:", err);
+  if (err.code === "LIMIT_FILE_SIZE") {
+    return res.status(400).json({
+      message: "One or more files exceed the maximum size limit."
+    });
+  }
+  if (err.code === "LIMIT_UNEXPECTED_FILE") {
+    return res.status(400).json({
+      message: "Unexpected field name for file upload."
+    });
+  }
+  res.status(500).json({
+    message: err.message || "An unexpected server error occurred."
+  });
+});
+
 module.exports = app;
