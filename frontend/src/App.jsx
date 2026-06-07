@@ -408,6 +408,15 @@ function App() {
                 }
               />
               <Route path={ROUTES.CANDIDATE_PROFILE} element={<ProfilePage user={user} applications={applications} />} />
+              <Route
+                path={ROUTES.CANDIDATE_UPDATE_RESUME}
+                element={
+                  <UpdateResumePage
+                    applications={applications}
+                    onUpdated={refreshCandidateApplications}
+                  />
+                }
+              />
               <Route path="*" element={<Navigate to={ROUTES.CANDIDATE_DASHBOARD} replace />} />
             </>
           )}

@@ -37,10 +37,10 @@ function CandidateDashboard({ navigate, applications = [] }) {
         </Panel>
         <Panel title="Quick Actions">
           <div className="dashboard-actions">
-            <button className="secondary-button wide" onClick={() => navigate('jobs')}>
+            <button className="secondary-button wide" onClick={() => navigate('/candidate/jobs')}>
               Browse Jobs <ChevronRight size={17} />
             </button>
-            <button className="primary-button wide" onClick={() => navigate('update-resume')}>
+            <button className="primary-button wide" onClick={() => navigate('/candidate/update-resume')}>
               Update Resume <UploadCloud size={18} />
             </button>
           </div>

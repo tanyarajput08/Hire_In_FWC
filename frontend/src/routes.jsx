@@ -19,4 +19,5 @@ export const ROUTES = {
   CANDIDATE_APPLICATIONS: '/candidate/applications',
   CANDIDATE_APPLICATION_DETAIL: '/candidate/applications/:applicationId',
   CANDIDATE_PROFILE: '/candidate/profile',
+  CANDIDATE_UPDATE_RESUME: '/candidate/update-resume',
 }
