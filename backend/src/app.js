@@ -3,11 +3,14 @@ const cors = require("cors");
 
 const app = express();
 
-// Global Middlewares
-app.use(cors());
+const corsOptions = {
+  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
-// Routes
 const authRoutes = require("./routes/authRoutes");
 const protectedRoutes = require("./routes/protectedRoutes");
 const jobRoutes = require("./routes/jobRoutes");
