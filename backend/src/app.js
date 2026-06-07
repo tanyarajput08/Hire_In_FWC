@@ -4,7 +4,7 @@ const cors = require("cors");
 const app = express();
 
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || "https://hire-in-fwc.vercel.app/",
+  origin: process.env.FRONTEND_URL || "http://localhost:5000",
   credentials: true,
 };
 
