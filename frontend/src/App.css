@@ -11,21 +11,28 @@
   position: relative;
 }
 
-.public-nav,
 .hero-section,
 .feature-grid {
-  width: min(1180px, calc(100% - 40px));
+  width: min(1400px, calc(100% - 80px));
   margin: 0 auto;
 }
 
 .public-nav {
+  width: 100%;
+  max-width: 100%;
+  padding: 0 min(80px, 6%);
   height: 80px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid rgba(40, 53, 76, 0.08);
-  position: relative;
-  z-index: 10;
+  position: sticky;
+  top: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 100;
+  transition: all 0.3s ease;
 }
 
 .nav-links-container {
@@ -40,6 +47,25 @@
   font-weight: 500;
   transition: color 0.2s ease;
   cursor: pointer;
+  position: relative;
+  padding: 6px 0;
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--accent-grad);
+  transition: width 0.25s ease;
+  border-radius: 2px;
+}
+
+.nav-link:hover::after,
+.nav-link.active::after {
+  width: 100%;
 }
 
 .nav-link:hover, .nav-link.active {
@@ -1315,22 +1341,24 @@ progress::-moz-progress-bar {
 }
 
 @media (max-width: 700px) {
-  .public-nav,
   .hero-section,
   .feature-grid {
-    width: min(100% - 28px, 1180px);
+    width: min(100% - 28px, 1400px);
   }
 
   .public-nav {
+    width: 100%;
+    max-width: 100%;
     height: auto;
-    padding: 16px 0;
-    align-items: flex-start;
-    gap: 12px;
+    padding: 16px 24px;
+    align-items: center;
+    flex-direction: column;
+    gap: 16px;
   }
 
   .nav-actions {
     flex-wrap: wrap;
-    justify-content: flex-end;
+    justify-content: center;
   }
 
   .hero-copy p {

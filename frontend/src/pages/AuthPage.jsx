@@ -22,7 +22,7 @@ function AuthPage({ mode, role, setRole, loginAs, navigate }) {
 
   return (
     <div className="auth-page">
-      <button className="brand-link" onClick={() => navigate('landing')}>
+      <button className="brand-link" onClick={() => navigate('/')}>
         <Logo />
       </button>
       <form
