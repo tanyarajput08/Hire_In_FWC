@@ -1,4 +1,6 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const fs = require("fs");
+const pdfParse = require("pdf-parse");
 
 let model;
 if (process.env.GEMINI_API_KEY) {
@@ -58,22 +60,15 @@ const analyzeResume = async (resumeText, jobDescription) => {
 };
 
 const analyzePDF = async (pdfPath, jobDescription) => {
-  const prompt = `
-    Analyze a resume PDF at path: ${pdfPath}
-    Against job description: ${jobDescription}
-    
-    Provide JSON with: score (0-100), matched_skills (array), missing_skills (array), summary
-    Return ONLY valid JSON.
-  `;
-
   try {
     if (!pdfPath || !jobDescription) {
       throw new Error("PDF path and job description are required");
     }
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
-    return extractJSON(responseText);
+    const parsed = await extractPDFText(pdfPath);
+    const resumeText = parsed.text;
+
+    return await analyzeResume(resumeText, jobDescription);
   } catch (error) {
     console.error("Error analyzing PDF:", error.message);
     throw new Error(`PDF analysis failed: ${error.message}`);
@@ -256,16 +251,14 @@ const generateCandidateSummary = async ({
 };
 
 const extractPDFText = async (pdfPath) => {
-  const prompt = `Extract and return all text content from the PDF file at: ${pdfPath}. Return JSON with: text (the extracted text)`;
-
   try {
     if (!pdfPath) {
       throw new Error("PDF path is required");
     }
 
-    const result = await model.generateContent(prompt);
-    const responseText = result.response.text();
-    return extractJSON(responseText);
+    const dataBuffer = fs.readFileSync(pdfPath);
+    const data = await pdfParse(dataBuffer);
+    return { text: data.text || "" };
   } catch (error) {
     console.error("Error extracting PDF text:", error.message);
     throw new Error(`PDF text extraction failed: ${error.message}`);
