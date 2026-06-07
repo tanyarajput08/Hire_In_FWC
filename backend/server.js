@@ -3,6 +3,10 @@ require("dotenv").config();
 const app = require("./src/app");
 const pool = require("./src/config/db");
 
+app.get("/", (req, res) => {
+  res.json({ status: "Backend is running 🚀" });
+});
+
 const PORT = process.env.PORT || 5000;
 const jobRoutes =
 require("./src/routes/jobRoutes");
