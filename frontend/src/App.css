@@ -731,7 +731,7 @@ select option {
 
 .panel.flat {
   box-shadow: none;
-  background: rgba(255, 255, 255, 0.64);
+  background: var(--bg-card);
 }
 
 .responsive-table {
