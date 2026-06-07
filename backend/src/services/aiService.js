@@ -1,13 +1,19 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-if (!process.env.GEMINI_API_KEY) {
-  throw new Error("GEMINI_API_KEY environment variable is not set");
+let model;
+if (process.env.GEMINI_API_KEY) {
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  model = genAI.getGenerativeModel({
+    model: process.env.GEMINI_MODEL || "gemini-1.5-flash"
+  });
+} else {
+  console.warn("[WARNING] GEMINI_API_KEY environment variable is not set. AI features will fail at runtime.");
+  model = {
+    generateContent: () => {
+      throw new Error("AI Service is not configured (GEMINI_API_KEY environment variable is missing)");
+    }
+  };
 }
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({
-  model: process.env.GEMINI_MODEL || "gemini-1.5-flash"
-});
 
 // Helper function to extract JSON from response
 const extractJSON = (text) => {
