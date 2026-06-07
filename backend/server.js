@@ -8,12 +8,11 @@ app.get("/", (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-const jobRoutes =
-require("./src/routes/jobRoutes");
-app.use("/api", jobRoutes);
-const resumeRoutes =
-require("./src/routes/resumeRoutes");
 
+const jobRoutes = require("./src/routes/jobRoutes");
+app.use("/api", jobRoutes);
+
+const resumeRoutes = require("./src/routes/resumeRoutes");
 app.use("/api", resumeRoutes);
 
 const screeningRoutes = require("./src/routes/screeningRoutes");
@@ -55,3 +54,4 @@ process.on("SIGTERM", () => {
     process.exit(0);
   });
 });
+
