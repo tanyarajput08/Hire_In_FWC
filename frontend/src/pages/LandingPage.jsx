@@ -2,6 +2,7 @@ import { ArrowRight, BarChart3, FileSearch, Medal, Sparkles } from 'lucide-react
 import FeatureCard from '../components/FeatureCard'
 import Logo from '../components/Logo'
 import { useState } from 'react'
+import { ROUTES } from '../routes'
 
 function LandingPage({ navigate }) {
   const [activeTab, setActiveTab] = useState('home')
@@ -33,10 +34,10 @@ function LandingPage({ navigate }) {
         </div>
 
         <div className="nav-actions">
-          <button className="ghost-button" onClick={() => navigate('login')}>
+          <button className="ghost-button" onClick={() => navigate(ROUTES.LOGIN)}>
             Login
           </button>
-          <button className="primary-button compact" onClick={() => navigate('register')}>
+          <button className="primary-button compact" onClick={() => navigate(ROUTES.REGISTER)}>
             Get Started <ArrowRight size={16} />
           </button>
         </div>
@@ -53,10 +54,10 @@ function LandingPage({ navigate }) {
             recruiters and candidates can actually see.
           </p>
           <div className="hero-actions">
-            <button className="primary-button" onClick={() => navigate('register')}>
+            <button className="primary-button" onClick={() => navigate(ROUTES.REGISTER)}>
               Get Started <ArrowRight size={18} />
             </button>
-            <button className="secondary-button" onClick={() => navigate('login', 'HR')}>
+            <button className="secondary-button" onClick={() => navigate(ROUTES.LOGIN, { state: { role: 'HR' } })}>
               HR Login
             </button>
           </div>

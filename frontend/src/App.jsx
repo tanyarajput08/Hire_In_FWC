@@ -186,6 +186,12 @@ function App() {
     }
   }, [activeJobId, jobs, user, refreshAllApplicants, refreshApplicants])
 
+  useEffect(() => {
+    if (location.state?.role) {
+      setRole(location.state.role)
+    }
+  }, [location.state])
+
   const visibleJobs = useMemo(() => {
     return jobs.filter((job) => {
       const searchableText = `${job.title} ${job.skills_required || ''}`.toLowerCase()

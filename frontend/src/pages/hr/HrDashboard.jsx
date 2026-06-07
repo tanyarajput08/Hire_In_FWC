@@ -5,6 +5,7 @@ import Page from '../../components/Page'
 import Panel from '../../components/Panel'
 import StatsGrid from '../../components/StatsGrid'
 import { tooltipStyle } from '../../utils/chartTheme'
+import { ROUTES } from '../../routes'
 
 function HrDashboard({ navigate, jobs = [], applicants = [] }) {
   const screenedCount = applicants.filter((candidate) => Number(candidate.score || 0) > 0).length
@@ -52,7 +53,7 @@ function HrDashboard({ navigate, jobs = [], applicants = [] }) {
               </div>
             ))}
           </div>
-          <button className="secondary-button" onClick={() => navigate('rankings')}>
+          <button className="secondary-button" onClick={() => navigate(ROUTES.HR_RANKINGS)}>
             View Rankings <ChevronRight size={17} />
           </button>
         </Panel>

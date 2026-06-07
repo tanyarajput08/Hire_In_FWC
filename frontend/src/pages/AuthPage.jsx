@@ -2,6 +2,7 @@ import { ArrowRight, ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
 import Logo from '../components/Logo'
 import TextField from '../components/TextField'
+import { ROUTES } from '../routes'
 
 function AuthPage({ mode, role, setRole, loginAs, navigate }) {
   const isRegister = mode === 'register'
@@ -95,7 +96,7 @@ function AuthPage({ mode, role, setRole, loginAs, navigate }) {
         <button
           type="button"
           className="text-button"
-          onClick={() => navigate(isRegister ? 'login' : 'register')}
+          onClick={() => navigate(isRegister ? ROUTES.LOGIN : ROUTES.REGISTER)}
         >
           {isRegister ? 'Already have an account? Login' : 'New here? Create account'}
         </button>

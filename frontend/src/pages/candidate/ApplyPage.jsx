@@ -5,6 +5,7 @@ import Panel from '../../components/Panel'
 import { api } from '../../services/api'
 import { formatApplicationCloseAt, isApplicationOpen } from '../../utils/applicationDeadline'
 import { parseSkillsRequired } from '../../utils/skillMatching'
+import { ROUTES } from '../../routes'
 
 function ApplyPage({ job, navigate, onApplied }) {
   const [fileName, setFileName] = useState('')
@@ -35,7 +36,7 @@ function ApplyPage({ job, navigate, onApplied }) {
       formData.append('resume', resumeFile)
       await api.uploadResume(formData)
       await onApplied?.()
-      navigate('applications')
+      navigate(ROUTES.CANDIDATE_APPLICATIONS)
     } catch (error) {
       setMessage(error.message)
     } finally {

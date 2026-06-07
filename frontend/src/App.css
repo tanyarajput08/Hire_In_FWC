@@ -246,6 +246,15 @@
   transform: none;
 }
 
+.primary-button:disabled,
+.secondary-button:disabled,
+.ghost-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
 .compact {
   min-height: 38px;
   padding-inline: 14px;
