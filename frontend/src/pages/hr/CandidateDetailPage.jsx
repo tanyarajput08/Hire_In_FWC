@@ -9,6 +9,7 @@ import ScoreRing from '../../components/ScoreRing'
 import { applicationStatuses } from '../../constants/applicationStatuses'
 import { api } from '../../services/api'
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
+import { parseSkillsRequired } from '../../utils/skillMatching'
 
 function CandidateDetailPage({ candidate, allCandidates = [], status, updateStatus }) {
   const [tab, setTab] = useState('Overview')
@@ -161,17 +162,16 @@ function CandidateDetailPage({ candidate, allCandidates = [], status, updateStat
     missing: missingSkills,
     strengths: summaryObj?.strengths || candidate.job_description || 'Screen this candidate to generate AI strengths.',
     weakness: summaryObj?.weaknesses || (missingSkills.length ? `Missing required skills: ${missingSkills.join(', ')}` : 'No required skills are missing from the parsed evidence.'),
-    skills: String(candidate.skills_required || '').split(',').map((skill) => {
-      const cleanSkill = skill.trim()
+    skills: parseSkillsRequired(candidate.skills_required).map((skill) => {
       const isMatched = matchedSkills.some(
-        (s) => s.toLowerCase().includes(cleanSkill.toLowerCase()) || cleanSkill.toLowerCase().includes(s.toLowerCase())
+        (s) => s.toLowerCase().includes(skill.toLowerCase()) || skill.toLowerCase().includes(s.toLowerCase())
       )
       return {
-        name: cleanSkill,
+        name: skill,
         matched: isMatched,
         value: isMatched ? 100 : 0,
       }
-    }).filter((skill) => skill.name),
+    }),
     resume: candidate.resume_file_path || 'No resume uploaded',
   }
 

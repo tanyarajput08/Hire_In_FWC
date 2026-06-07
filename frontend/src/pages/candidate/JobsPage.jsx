@@ -2,6 +2,7 @@ import { Check, Search, UploadCloud } from 'lucide-react'
 import Page from '../../components/Page'
 import Panel from '../../components/Panel'
 import { formatApplicationCloseAt, isApplicationOpen } from '../../utils/applicationDeadline'
+import { parseSkillsRequired } from '../../utils/skillMatching'
 
 function JobsPage({ jobs, appliedJobIds = [], query, setQuery, filter, setFilter, onApply }) {
   return (
@@ -39,7 +40,7 @@ function JobsPage({ jobs, appliedJobIds = [], query, setQuery, filter, setFilter
               <div className="chip-row">
                 {job.type && <span className="chip">{job.type}</span>}
                 {job.mode && <span className="chip">{job.mode}</span>}
-                {String(job.skills_required || '').split(',').map((skill) => skill.trim()).filter(Boolean).map((skill) => (
+                {parseSkillsRequired(job.skills_required).map((skill) => (
                   <span className="chip" key={skill}>{skill}</span>
                 ))}
               </div>

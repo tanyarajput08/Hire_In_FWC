@@ -18,3 +18,10 @@ export function isSkillMatched(requiredSkill = '', matchedSkills = [], missingSk
     (skill) => skillsAreEquivalent(skill, requiredSkill)
   )
 }
+
+export function parseSkillsRequired(skillsString = '') {
+  return String(skillsString || '')
+    .split(/[\n,]/)
+    .map((skill) => skill.replace(/^[\s•\-\*\d\.\:\(\)]+/, '').trim())
+    .filter(Boolean)
+}

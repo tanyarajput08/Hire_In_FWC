@@ -5,7 +5,7 @@ import Page from '../../components/Page'
 import Panel from '../../components/Panel'
 import { api } from '../../services/api'
 import { formatApplicationCloseAt, isApplicationOpen } from '../../utils/applicationDeadline'
-import { isSkillMatched } from '../../utils/skillMatching'
+import { isSkillMatched, parseSkillsRequired } from '../../utils/skillMatching'
 
 function parseSummary(summary) {
   if (!summary) return null
@@ -48,15 +48,14 @@ function ApplicationDetail({ candidate, onBack, onDeleteResume, onResumeUpdated 
     missing: missingSkills,
     strengths: summary?.strengths || candidate.job_description || 'Run screening to generate AI strengths from the uploaded resume.',
     weakness: summary?.weaknesses || (missingSkills.length ? `Missing required skills: ${missingSkills.join(', ')}` : 'No required skills are missing from the parsed evidence.'),
-    skills: String(candidate.skills_required || '').split(',').map((skill) => {
-      const cleanSkill = skill.trim()
-      const matched = isSkillMatched(cleanSkill, matchedSkills, missingSkills)
+    skills: parseSkillsRequired(candidate.skills_required).map((skill) => {
+      const matched = isSkillMatched(skill, matchedSkills, missingSkills)
       return {
-        name: cleanSkill,
+        name: skill,
         matched,
         value: matched ? 100 : 0,
       }
-    }).filter((skill) => skill.name),
+    }),
   }
 
   const handleUpdateResume = async (file) => {

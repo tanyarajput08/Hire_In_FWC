@@ -5,6 +5,7 @@ import Panel from '../../components/Panel'
 import ScoreRing from '../../components/ScoreRing'
 import StatusPill from '../../components/StatusPill'
 import { api } from '../../services/api'
+import { parseSkillsRequired } from '../../utils/skillMatching'
 
 const suggestedPrompts = [
   'Which candidates have Docker experience?',
@@ -28,10 +29,7 @@ function RecruiterAssistantPage({ candidates = [] }) {
       skills: [
         ...(candidate.matched_skills || []),
         ...(candidate.missing_skills || []),
-        ...String(candidate.skills_required || '')
-          .split(',')
-          .map((skill) => skill.trim())
-          .filter(Boolean),
+        ...parseSkillsRequired(candidate.skills_required),
       ].filter((skill, index, list) => skill && list.indexOf(skill) === index),
       resume_text: [
         typeof candidate.summary === 'string' ? candidate.summary : '',

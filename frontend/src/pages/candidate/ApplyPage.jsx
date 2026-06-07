@@ -4,6 +4,7 @@ import Page from '../../components/Page'
 import Panel from '../../components/Panel'
 import { api } from '../../services/api'
 import { formatApplicationCloseAt, isApplicationOpen } from '../../utils/applicationDeadline'
+import { parseSkillsRequired } from '../../utils/skillMatching'
 
 function ApplyPage({ job, navigate, onApplied }) {
   const [fileName, setFileName] = useState('')
@@ -11,9 +12,7 @@ function ApplyPage({ job, navigate, onApplied }) {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
 
-  const skills = Array.isArray(job.skills_required)
-    ? job.skills_required
-    : String(job.skills_required || '').split(',').map((skill) => skill.trim()).filter(Boolean)
+  const skills = parseSkillsRequired(job.skills_required)
   const open = isApplicationOpen(job.application_close_at)
   const closeLabel = formatApplicationCloseAt(job.application_close_at)
 
