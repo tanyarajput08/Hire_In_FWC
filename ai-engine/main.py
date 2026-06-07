@@ -3,7 +3,7 @@ import shutil
 import json
 import urllib.error
 import urllib.request
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from pydantic import BaseModel
 from resume_matcher import calculate_match_score, compare_skills, calculate_detailed_scores
 from resume_parser import extract_text, extract_skills
@@ -302,7 +302,7 @@ def call_openai(prompt: str):
     model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     payload = {
         "model": model,
-        "input": [
+        "messages": [
             {
                 "role": "system",
                 "content": "You write concise JSON-only recruiter screening summaries."
@@ -315,17 +315,17 @@ def call_openai(prompt: str):
         "temperature": 0.2
     }
 
-    data = post_json(
-        "https://api.openai.com/v1/responses",
-        {"Authorization": f"Bearer {api_key}"},
-        payload
-    )
-
-    text = data.get("output_text")
-    if not text:
-        text = data["output"][0]["content"][0]["text"]
-
-    return extract_json_object(text)
+    try:
+        data = post_json(
+            "https://api.openai.com/v1/chat/completions",
+            {"Authorization": f"Bearer {api_key}"},
+            payload
+        )
+        text = data["choices"][0]["message"]["content"]
+        return extract_json_object(text)
+    except Exception as e:
+        print(f"OpenAI API call failed: {e}")
+        return None
 
 def first_resume_evidence(resume_text: str, skills: list[str]):
     if not resume_text or not skills:
@@ -460,7 +460,10 @@ def analyze_interview(data: InterviewTranscriptRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/analyze-interview-video")
-def analyze_interview_video(data: InterviewVideoRequest):
+async def analyze_interview_video(
+    file: UploadFile = File(...),
+    job_description: str = Form(...)
+):
     try:
         try:
             from faster_whisper import WhisperModel
@@ -470,11 +473,22 @@ def analyze_interview_video(data: InterviewVideoRequest):
                 detail="Video transcription requires faster-whisper. Install it and ffmpeg, or send a transcript to /analyze-interview."
             )
 
-        model = WhisperModel("base", device="cpu", compute_type="int8")
-        segments, _ = model.transcribe(data.video_path)
-        transcript = " ".join(segment.text.strip() for segment in segments)
+        temp_dir = "temp"
+        os.makedirs(temp_dir, exist_ok=True)
+        temp_file_path = os.path.join(temp_dir, file.filename)
 
-        return score_interview_transcript(transcript, data.job_description)
+        with open(temp_file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
+        try:
+            model = WhisperModel("base", device="cpu", compute_type="int8")
+            segments, _ = model.transcribe(temp_file_path)
+            transcript = " ".join(segment.text.strip() for segment in segments)
+        finally:
+            if os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
+
+        return score_interview_transcript(transcript, job_description)
     except HTTPException:
         raise
     except Exception as e:

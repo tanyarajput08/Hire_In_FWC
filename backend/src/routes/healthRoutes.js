@@ -48,6 +48,7 @@ router.get("/health/detailed", async (req, res) => {
       },
       services: {
         gemini: process.env.GEMINI_API_KEY ? "configured" : "not configured",
+        ai_engine_url: process.env.AI_ENGINE_URL || "not configured (using default http://127.0.0.1:8000)",
         cors: "enabled",
         authentication: "enabled"
       }

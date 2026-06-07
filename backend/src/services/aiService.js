@@ -2,6 +2,8 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
 const fs = require("fs");
 const pdfParse = require("pdf-parse");
 
+const AI_ENGINE_URL = process.env.AI_ENGINE_URL || "http://127.0.0.1:8000";
+
 // Helper to dynamically obtain Gemini model
 const getGeminiModel = () => {
   if (process.env.GEMINI_API_KEY) {
@@ -219,7 +221,17 @@ const analyzeResume = async (resumeText, jobDescription) => {
     try {
       const prompt = `
         Analyze the following resume against the job description.
-        Provide a JSON response with: score (0-100), matched_skills (array), missing_skills (array), and summary.
+        Provide a JSON response with the following keys:
+        - score: a number from 0 to 100
+        - matched_skills: an array of strings representing skills from the JD found in the resume
+        - missing_skills: an array of strings representing skills from the JD NOT found in the resume
+        - summary: a nested JSON object with keys:
+          - strengths: a string detailing the candidate's top strengths
+          - weaknesses: a string detailing their weaknesses or gaps
+          - recommended_role: a string indicating the closest matching role
+          - interview_recommendation: a string advising whether to proceed, keep as backup, or reject
+          - experience_years: a number representing their estimated years of relevant experience
+          - score_breakdown: a nested object with keys: "skills" (number 0-100), "experience" (number 0-100), "education" (number 0-100)
         
         Resume:
         ${resumeText}
@@ -242,7 +254,17 @@ const analyzeResume = async (resumeText, jobDescription) => {
     try {
       const prompt = `
         Analyze the following resume against the job description.
-        Provide a JSON response with: score (0-100), matched_skills (array), missing_skills (array), and summary.
+        Provide a JSON response with the following keys:
+        - score: a number from 0 to 100
+        - matched_skills: an array of strings
+        - missing_skills: an array of strings
+        - summary: a nested JSON object with keys:
+          - strengths: a string detailing the candidate's top strengths
+          - weaknesses: a string detailing their weaknesses or gaps
+          - recommended_role: a string indicating the closest matching role
+          - interview_recommendation: a string advising whether to proceed, keep as backup, or reject
+          - experience_years: a number
+          - score_breakdown: a nested object with keys: "skills" (number 0-100), "experience" (number 0-100), "education" (number 0-100)
         
         Resume:
         ${resumeText}
@@ -262,6 +284,12 @@ const analyzeResume = async (resumeText, jobDescription) => {
   console.info("[AI Service] Using local rules-based fallback for resume analysis");
   const localResult = calculateLocalScore(resumeText, jobDescription);
   const summaryObj = localFallbackSummary(resumeText, localResult.score, localResult.matched_skills, localResult.missing_skills);
+  summaryObj.experience_years = 1;
+  summaryObj.score_breakdown = {
+    skills: localResult.score,
+    experience: 50,
+    education: 70
+  };
   return {
     score: localResult.score,
     matched_skills: localResult.matched_skills,
@@ -349,15 +377,16 @@ const analyzeInterviewVideo = async (videoPath, jobDescription) => {
 
   // 1. Try Python AI Engine first (for faster-whisper transcription and analysis)
   try {
-    const response = await fetch("http://127.0.0.1:8000/analyze-interview-video", {
+    const path = require("path");
+    const fileBuffer = fs.readFileSync(videoPath);
+    const fileBlob = new Blob([fileBuffer]);
+    const formData = new FormData();
+    formData.append("file", fileBlob, path.basename(videoPath));
+    formData.append("job_description", jobDescription);
+
+    const response = await fetch(`${AI_ENGINE_URL}/analyze-interview-video`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        video_path: videoPath,
-        job_description: jobDescription
-      })
+      body: formData
     });
     if (response.ok) {
       const data = await response.json();
@@ -376,18 +405,49 @@ const analyzeInterviewVideo = async (videoPath, jobDescription) => {
     console.warn("[AI Service] Python AI engine check failed, proceeding to Gemini/OpenAI:", error.message);
   }
 
-  // 2. Try Gemini
+  // 2. Try Gemini with native video multimodal input
   const modelInstance = getGeminiModel();
   if (modelInstance) {
     try {
+      if (!fs.existsSync(videoPath)) {
+        throw new Error(`Video file does not exist at: ${videoPath}`);
+      }
+      const fileBuffer = fs.readFileSync(videoPath);
+      
       const prompt = `
-        Analyze interview video details. Video path: ${videoPath}.
-        For job: ${jobDescription}
+        You are an expert technical interviewer. Analyze the attached video/audio interview file.
+        Compare the candidate's answers and technical depth against this Job Description:
+        "${jobDescription}"
         
-        Provide JSON with: overall_score (0-100), communication_score (0-100), technical_relevance_score (0-100), confidence_score (0-100), feedback (text summary and recommendations)
+        Tasks:
+        1. Transcribe the spoken words in the video as accurately as possible.
+        2. Analyze the candidate's communication skills, confidence, and technical relevance to the job.
+        3. Score each area (overall_score, communication_score, technical_relevance_score, confidence_score) on a scale of 0-100.
+        4. Provide detailed constructive feedback.
+        
+        Provide your response in JSON format with the following keys:
+        - overall_score (number)
+        - communication_score (number)
+        - technical_relevance_score (number)
+        - confidence_score (number)
+        - feedback (string containing summary, key tech mentioned, and improvement advice)
+        - transcript (string containing the full transcription of the video)
+        
         Return ONLY valid JSON.
       `;
-      const result = await modelInstance.generateContent(prompt);
+
+      let contents = [];
+      if (fileBuffer.length <= 25 * 1024 * 1024) {
+        contents.push({
+          inlineData: {
+            data: fileBuffer.toString("base64"),
+            mimeType: "video/mp4"
+          }
+        });
+      }
+      contents.push({ text: prompt });
+
+      const result = await modelInstance.generateContent(contents);
       const responseText = result.response.text();
       return extractJSON(responseText);
     } catch (error) {
@@ -402,7 +462,7 @@ const analyzeInterviewVideo = async (videoPath, jobDescription) => {
         Analyze interview video details. Video path: ${videoPath}.
         For job: ${jobDescription}
         
-        Provide JSON with: overall_score (0-100), communication_score (0-100), technical_relevance_score (0-100), confidence_score (0-100), feedback (text summary and recommendations)
+        Provide JSON with: overall_score (0-100), communication_score (0-100), technical_relevance_score (0-100), confidence_score (0-100), feedback (text summary and recommendations), transcript (text summary)
         Return ONLY valid JSON.
       `;
       return await callOpenAI(prompt);
@@ -430,18 +490,52 @@ const askRecruiterAssistant = async (question, candidates) => {
     throw new Error("Candidates array is required and must not be empty");
   }
 
-  // 1. Try Gemini
+  // 1. Try Python AI Engine first for RAG embedding search
+  try {
+    const response = await fetch(`${AI_ENGINE_URL}/recruiter-assistant`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        question,
+        candidates
+      })
+    });
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.answer !== undefined) {
+        return data;
+      }
+    }
+  } catch (error) {
+    console.warn("[AI Service] Python recruiter assistant check failed, trying Gemini/OpenAI:", error.message);
+  }
+
+  // 2. Try Gemini
   const modelInstance = getGeminiModel();
   if (modelInstance) {
     try {
       const prompt = `
-        You are an expert recruiting assistant. Answer this question:
+        You are an expert recruiting assistant. Answer the following question:
         "${question}"
         
-        Based on these candidates:
+        Based on these candidates' profiles and resumes:
         ${JSON.stringify(candidates, null, 2)}
         
-        Provide actionable insights in JSON format with: answer, recommendations, next_steps
+        Analyze the candidates and rank them by relevance to the question.
+        Provide a JSON response with the following keys:
+        - answer: A concise, professional response answering the question, highlighting the best candidates.
+        - matches: An array of candidate objects, sorted by similarity to the question, where each candidate has:
+          - candidate_id: The ID of the candidate (from the input candidate_id or id).
+          - name: The candidate's name.
+          - role: The candidate's role.
+          - score: The candidate's screening score (if available).
+          - status: The candidate's application status.
+          - skills: An array of the candidate's key skills.
+          - similarity: A number (0 to 100) representing how well this candidate matches the recruiter's question.
+          - evidence: A 1-2 sentence quote or summary from the candidate's resume/profile showing proof of their match.
+          
         Return ONLY valid JSON.
       `;
       const result = await modelInstance.generateContent(prompt);
@@ -452,17 +546,29 @@ const askRecruiterAssistant = async (question, candidates) => {
     }
   }
 
-  // 2. Try OpenAI
+  // 3. Try OpenAI
   if (process.env.OPENAI_API_KEY) {
     try {
       const prompt = `
-        You are an expert recruiting assistant. Answer this question:
+        You are an expert recruiting assistant. Answer the following question:
         "${question}"
         
-        Based on these candidates:
+        Based on these candidates' profiles and resumes:
         ${JSON.stringify(candidates, null, 2)}
         
-        Provide actionable insights in JSON format with: answer, recommendations, next_steps
+        Analyze the candidates and rank them by relevance to the question.
+        Provide a JSON response with the following keys:
+        - answer: A concise, professional response answering the question, highlighting the best candidates.
+        - matches: An array of candidate objects, sorted by similarity to the question, where each candidate has:
+          - candidate_id: The ID of the candidate.
+          - name: The candidate's name.
+          - role: The candidate's role.
+          - score: The candidate's screening score.
+          - status: The candidate's application status.
+          - skills: An array of the candidate's key skills.
+          - similarity: A number (0 to 100) representing how well this candidate matches the recruiter's question.
+          - evidence: A 1-2 sentence quote or summary from the candidate's resume/profile showing proof of their match.
+          
         Return ONLY valid JSON.
       `;
       return await callOpenAI(prompt);
@@ -471,12 +577,20 @@ const askRecruiterAssistant = async (question, candidates) => {
     }
   }
 
-  // 3. Fallback
-  const matches = candidates.slice(0, 3).map(c => c.name).join(", ");
+  // 4. Fallback
+  const matches = candidates.slice(0, 3).map(c => ({
+    candidate_id: c.candidate_id || c.id,
+    name: c.name,
+    role: c.role || "Applicant",
+    score: c.score || 0,
+    status: c.status || "APPLIED",
+    skills: c.skills || [],
+    similarity: 70,
+    evidence: "Local search fallback context: Candidate has skills aligning with the query."
+  }));
   return {
-    answer: `Recruiting assistant fallback. Candidates reviewed: ${matches}. Ask specific questions to see detailed alignments.`,
-    recommendations: ["Ensure candidate profiles are fully screened", "Review experience levels for matching requirements"],
-    next_steps: ["Schedule follow-up calls", "Verify core technical skills"]
+    answer: `Recruiting assistant fallback. Candidates reviewed: ${candidates.map(c => c.name).join(", ")}. Please configure valid API keys to enable full AI semantic responses.`,
+    matches
   };
 };
 
@@ -503,7 +617,7 @@ const explainScore = async ({
         Matched Skills: ${matchedSkills.join(", ")}
         Missing Skills: ${missingSkills.join(", ")}
         
-        Provide JSON with: explanation, key_strengths (array), areas_to_improve (array)
+        Provide JSON with: reasoning (detailed text explanation of why the candidate got this score), recommendations (array of 3-4 specific and actionable recommendations for how this candidate could improve their score)
         Return ONLY valid JSON.
       `;
       const result = await modelInstance.generateContent(prompt);
@@ -525,7 +639,7 @@ const explainScore = async ({
         Matched Skills: ${matchedSkills.join(", ")}
         Missing Skills: ${missingSkills.join(", ")}
         
-        Provide JSON with: explanation, key_strengths (array), areas_to_improve (array)
+        Provide JSON with: reasoning (detailed text explanation), recommendations (array of strings)
         Return ONLY valid JSON.
       `;
       return await callOpenAI(prompt);
@@ -535,10 +649,13 @@ const explainScore = async ({
   }
 
   // 3. Fallback
+  const recs = missingSkills.slice(0, 3).map(skill => `Develop competency or detail projects involving ${skill}.`);
+  if (recs.length === 0) {
+    recs.push("Highlight specific quantitative achievements in your resume.", "Ensure your resume layout highlights core architectural design patterns.");
+  }
   return {
-    explanation: `The candidate received a score of ${score}/100. They matched ${matchedSkills.length} skills (${matchedSkills.slice(0, 4).join(", ")}) but lacked ${missingSkills.length} key skills required by the job.`,
-    key_strengths: matchedSkills.slice(0, 4),
-    areas_to_improve: missingSkills.slice(0, 4)
+    reasoning: `The candidate received a score of ${score}/100. They matched ${matchedSkills.length} skills (${matchedSkills.slice(0, 4).join(", ")}) but lacked ${missingSkills.length} key skills required by the job.`,
+    recommendations: recs
   };
 };
 
@@ -562,7 +679,7 @@ const compareCandidates = async ({
         Candidate B: ${JSON.stringify(candidateB)}
         Job: ${jobDescription}
         
-        Provide JSON with: winner (A or B), reasoning (text), recommendation (text)
+        Provide JSON with: comparison_summary (2-3 sentence overview of how they compare), key_differences (array of 3 key differences), verdict (final recommendation on which candidate is a stronger fit and why)
         Return ONLY valid JSON.
       `;
       const result = await modelInstance.generateContent(prompt);
@@ -583,7 +700,7 @@ const compareCandidates = async ({
         Candidate B: ${JSON.stringify(candidateB)}
         Job: ${jobDescription}
         
-        Provide JSON with: winner (A or B), reasoning (text), recommendation (text)
+        Provide JSON with: comparison_summary (2-3 sentence overview), key_differences (array of strings), verdict (text verdict recommendation)
         Return ONLY valid JSON.
       `;
       return await callOpenAI(prompt);
@@ -594,12 +711,15 @@ const compareCandidates = async ({
 
   // 3. Fallback
   const diff = Math.abs(candidateA.score - candidateB.score);
-  const better = candidateA.score >= candidateB.score ? "A" : "B";
-  const betterName = candidateA.score >= candidateB.score ? candidateA.name : candidateB.name;
+  const better = candidateA.score >= candidateB.score ? candidateA.name : candidateB.name;
   return {
-    winner: better,
-    reasoning: `Candidate ${betterName} has a higher match score of ${Math.max(candidateA.score, candidateB.score)}% compared to the other candidate's score of ${Math.min(candidateA.score, candidateB.score)}%.`,
-    recommendation: `Proceed with Candidate ${betterName} due to closer alignment with job skills.`
+    comparison_summary: `Comparing ${candidateA.name} (Score: ${candidateA.score}%) and ${candidateB.name} (Score: ${candidateB.score}%). ${better} shows a higher alignment with the target role.`,
+    key_differences: [
+      `Candidate score difference of ${diff}%.`,
+      `${candidateA.name} matched: ${candidateA.matched_skills.slice(0, 4).join(", ") || "none"}`,
+      `${candidateB.name} matched: ${candidateB.matched_skills.slice(0, 4).join(", ") || "none"}`
+    ],
+    verdict: `Recommend ${better} due to stronger alignment with the job description requirements.`
   };
 };
 
