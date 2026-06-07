@@ -2,6 +2,17 @@
 
 HireIn is a full-stack AI-powered recruitment platform designed to automate resume screening, candidate ranking, recruiter assistance, interview analysis, and hiring analytics. The platform combines modern web technologies with Natural Language Processing (NLP), semantic search, and machine learning techniques to streamline the recruitment process and reduce manual screening effort.
 
+## Live Deployment
+
+### Frontend
+🌐 https://hire-in-fwc.vercel.app/
+
+### Backend API
+🔗 https://hire-in-fwc-1.onrender.com/
+
+### AI Engine
+🤖 https://hire-in-fwc-2.onrender.com/
+
 ## Key Highlights
 
 * AI-powered resume screening and candidate ranking.
