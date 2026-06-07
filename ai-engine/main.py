@@ -7,7 +7,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from pydantic import BaseModel
 from resume_matcher import calculate_match_score, compare_skills, calculate_detailed_scores
 from resume_parser import extract_text, extract_skills
-from models import model as rag_model
+from models import get_model as rag_model_getter
 from structured_parser import parse_sections, extract_experience_years
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -188,8 +188,8 @@ def answer_recruiter_question(question: str, candidates: list[CandidateContext])
         }
 
     documents = [build_candidate_document(candidate) for candidate in candidates]
-    query_embedding = rag_model.encode([question])
-    document_embeddings = rag_model.encode(documents)
+    query_embedding = rag_model_getter().encode([question])
+    document_embeddings = rag_model_getter().encode(documents)
     similarities = cosine_similarity(query_embedding, document_embeddings)[0]
 
     ranked = sorted(

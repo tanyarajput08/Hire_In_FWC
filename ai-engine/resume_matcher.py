@@ -1,13 +1,13 @@
 import re
 from sklearn.metrics.pairwise import cosine_similarity
-from models import model
+from models import get_model
 from resume_parser import extract_skills, extract_explicit_skills
 
 _jd_cache = {}
 
 def get_jd_embedding(job_description: str):
     if job_description not in _jd_cache:
-        _jd_cache[job_description] = model.encode([job_description])
+        _jd_cache[job_description] = get_model().encode([job_description])
     return _jd_cache[job_description]
 
 def parse_required_skills(job_description: str):
@@ -34,7 +34,7 @@ def compare_skills(resume_text: str, job_description: str):
     return matched, missing
 
 def calculate_match_score(resume_text: str, job_description: str):
-    resume_embedding = model.encode([resume_text])
+    resume_embedding = get_model().encode([resume_text])
     jd_embedding = get_jd_embedding(job_description)
     semantic_score = float(cosine_similarity(resume_embedding, jd_embedding)[0][0]) * 100
     semantic_score = max(0.0, min(100.0, semantic_score))
@@ -47,7 +47,7 @@ def calculate_match_score(resume_text: str, job_description: str):
     return round(max(0.0, min(100.0, final_score)), 2)
 
 def calculate_detailed_scores(resume_text: str, job_description: str, experience_years: float = 0.0):
-    resume_embedding = model.encode([resume_text])
+    resume_embedding = get_model().encode([resume_text])
     jd_embedding = get_jd_embedding(job_description)
     
     semantic_score = float(cosine_similarity(resume_embedding, jd_embedding)[0][0]) * 100
