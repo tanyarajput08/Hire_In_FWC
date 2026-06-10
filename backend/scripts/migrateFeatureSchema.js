@@ -3,6 +3,59 @@ require("dotenv").config();
 const pool = require("../src/config/db");
 
 async function migrateFeatureSchema() {
+  // 1. Create base tables if they don't exist
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      email VARCHAR(255) UNIQUE NOT NULL,
+      password_hash VARCHAR(255) NOT NULL,
+      role VARCHAR(50) NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS jobs (
+      id SERIAL PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      description TEXT NOT NULL,
+      skills_required TEXT,
+      created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      type VARCHAR(32) DEFAULT 'Full-Time',
+      mode VARCHAR(32) DEFAULT 'On-site',
+      application_close_at TIMESTAMP,
+      auto_screen BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS applications (
+      id SERIAL PRIMARY KEY,
+      candidate_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      job_id INTEGER REFERENCES jobs(id) ON DELETE CASCADE,
+      status VARCHAR(32) DEFAULT 'APPLIED',
+      score NUMERIC(5,2),
+      matched_skills TEXT[] DEFAULT '{}',
+      missing_skills TEXT[] DEFAULT '{}',
+      summary JSONB,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS resumes (
+      id SERIAL PRIMARY KEY,
+      candidate_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      application_id INTEGER REFERENCES applications(id) ON DELETE CASCADE,
+      file_path TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // 2. Add extra feature columns if applications table already exists but lacks them
   await pool.query(`
     ALTER TABLE applications
       ADD COLUMN IF NOT EXISTS status VARCHAR(32) DEFAULT 'APPLIED',

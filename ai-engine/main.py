@@ -290,9 +290,13 @@ def call_gemini(prompt: str):
         }
     }
 
-    data = post_json(url, {}, payload)
-    text = data["candidates"][0]["content"]["parts"][0]["text"]
-    return extract_json_object(text)
+    try:
+        data = post_json(url, {}, payload)
+        text = data["candidates"][0]["content"]["parts"][0]["text"]
+        return extract_json_object(text)
+    except Exception as e:
+        print(f"Gemini API call failed: {e}")
+        return None
 
 def call_openai(prompt: str):
     api_key = os.getenv("OPENAI_API_KEY")

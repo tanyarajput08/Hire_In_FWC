@@ -215,7 +215,29 @@ const analyzeResume = async (resumeText, jobDescription) => {
     throw new Error("Resume text and job description are required");
   }
 
-  // 1. Try Gemini
+  // 1. Try Python AI Engine first
+  try {
+    const response = await fetch(`${AI_ENGINE_URL}/match`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        resume_text: resumeText,
+        job_description: jobDescription
+      })
+    });
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.score !== undefined) {
+        return data;
+      }
+    }
+  } catch (error) {
+    console.warn("[AI Service] Python AI engine match failed, trying Gemini:", error.message);
+  }
+
+  // 2. Try Gemini
   const modelInstance = getGeminiModel();
   if (modelInstance) {
     try {
@@ -304,6 +326,28 @@ const analyzePDF = async (pdfPath, jobDescription) => {
       throw new Error("PDF path and job description are required");
     }
 
+    // 1. Try Python AI Engine screen-pdf first
+    try {
+      const response = await fetch(`${AI_ENGINE_URL}/screen-pdf`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          pdf_path: pdfPath,
+          job_description: jobDescription
+        })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.score !== undefined) {
+          return data;
+        }
+      }
+    } catch (error) {
+      console.warn("[AI Service] Python AI engine screen-pdf failed, proceeding to local extract and analyzeResume:", error.message);
+    }
+
     const parsed = await extractPDFText(pdfPath);
     const resumeText = parsed.text;
 
@@ -319,7 +363,29 @@ const analyzeInterviewTranscript = async (transcript, jobDescription) => {
     throw new Error("Interview transcript and job description are required");
   }
 
-  // 1. Try Gemini
+  // 1. Try Python AI Engine first
+  try {
+    const response = await fetch(`${AI_ENGINE_URL}/analyze-interview`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        transcript,
+        job_description: jobDescription
+      })
+    });
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.overall_score !== undefined) {
+        return data;
+      }
+    }
+  } catch (error) {
+    console.warn("[AI Service] Python AI engine analyze-interview failed, trying Gemini:", error.message);
+  }
+
+  // 2. Try Gemini
   const modelInstance = getGeminiModel();
   if (modelInstance) {
     try {
@@ -605,7 +671,32 @@ const explainScore = async ({
     throw new Error("Resume text, job description, and score are required");
   }
 
-  // 1. Try Gemini
+  // 1. Try Python AI Engine first
+  try {
+    const response = await fetch(`${AI_ENGINE_URL}/explain-score`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        resume_text: resumeText,
+        job_description: jobDescription,
+        score,
+        matched_skills: matchedSkills,
+        missing_skills: missingSkills
+      })
+    });
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.reasoning !== undefined) {
+        return data;
+      }
+    }
+  } catch (error) {
+    console.warn("[AI Service] Python AI engine explain-score failed, trying Gemini:", error.message);
+  }
+
+  // 2. Try Gemini
   const modelInstance = getGeminiModel();
   if (modelInstance) {
     try {
@@ -668,7 +759,30 @@ const compareCandidates = async ({
     throw new Error("Both candidates and job description are required");
   }
 
-  // 1. Try Gemini
+  // 1. Try Python AI Engine first
+  try {
+    const response = await fetch(`${AI_ENGINE_URL}/compare-candidates`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        candidate_a: candidateA,
+        candidate_b: candidateB,
+        job_description: jobDescription
+      })
+    });
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.verdict !== undefined) {
+        return data;
+      }
+    }
+  } catch (error) {
+    console.warn("[AI Service] Python AI engine compare-candidates failed, trying Gemini:", error.message);
+  }
+
+  // 2. Try Gemini
   const modelInstance = getGeminiModel();
   if (modelInstance) {
     try {
@@ -734,7 +848,36 @@ const generateCandidateSummary = async ({
     throw new Error("Resume text, job description, and score are required");
   }
 
-  // 1. Try Gemini
+  // 1. Try Python AI Engine first
+  try {
+    const response = await fetch(`${AI_ENGINE_URL}/candidate-summary`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        resume_text: resumeText,
+        job_description: jobDescription,
+        score,
+        matched_skills: matchedSkills,
+        missing_skills: missingSkills
+      })
+    });
+    if (response.ok) {
+      const data = await response.json();
+      if (data && data.strengths !== undefined) {
+        return {
+          summary: `${data.strengths} ${data.weaknesses}`,
+          recommendation: data.interview_recommendation,
+          next_steps: ["Conduct technical interview", "Validate matched skills"]
+        };
+      }
+    }
+  } catch (error) {
+    console.warn("[AI Service] Python AI engine candidate-summary failed, trying Gemini:", error.message);
+  }
+
+  // 2. Try Gemini
   const modelInstance = getGeminiModel();
   if (modelInstance) {
     try {
